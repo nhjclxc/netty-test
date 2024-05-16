@@ -1,73 +1,32 @@
 package com.nhjclxc.nettytest.config;
 
+import com.nhjclxc.nettytest.utils.MessageType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+
 /**
  * netty 统一返回结果集
  *
  * @author LuoXianchao
  * @since 2023/10/03 10:14
  */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
 public class NettyResult<T> {
-
-    private Integer code;
-    private String errMsg;
+    private MessageType type;
     private T data;
-
-    public static <T> NettyResult<T> success(){
-        return new NettyResult<>();
-    }
-
-    public static <T> NettyResult<T> success(T data){
-        return new NettyResult<>(data);
-    }
-
-    public static <T> NettyResult<T> success(String msg, T data){
-        return new NettyResult<>(200, msg, data);
-    }
-
-    public static <T> NettyResult<T> error(String msg){
-        return new NettyResult<>(500, msg, null);
-    }
-
-    public NettyResult() {
-        this(200, "成功", null);
-    }
-
-    public NettyResult(T data) {
-        this(200, null, data);
-    }
-    public NettyResult(Integer code, T data) {
-        this(code, "", data);
-    }
-
-    public NettyResult(Integer code, String errMsg, T data) {
-        this.code = code;
-        this.errMsg = errMsg;
-        this.data = data;
-    }
-
-    public Integer getCode() {
-        return this.code;
-    }
-
-    public void setCode(Integer code) {
-        this.code = code;
-    }
-
-    public String getErrMsg() {
-        return this.errMsg;
-    }
-
-    public void setErrMsg(String errMsg) {
-        this.errMsg = errMsg;
-    }
-
-
-    public T getData() {
-        return this.data;
-    }
-
-    public void setData(T data) {
-        this.data = data;
-    }
-
+    /**
+     * 谁发起的
+     */
+    private Long userId;
+    /**
+     * 发给谁的
+     */
+    private Long toUserId;
 }

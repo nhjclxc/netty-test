@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author LuoXianchao
@@ -48,8 +47,7 @@ public class TokenUtils {
      * @param claims 数据声明
      * @return 令牌
      */
-    public static String createToken(Map<String, Object> claims)
-    {
+    public static String createToken(Map<String, Object> claims) {
         String token = Jwts.builder()
                 .setClaims(claims)
                 .signWith(SignatureAlgorithm.HS512, "abcdefghijklmnopqrstuvwxyz").compact();
@@ -63,8 +61,7 @@ public class TokenUtils {
      * @param token 令牌
      * @return 数据声明
      */
-    public Claims parseToken(String token)
-    {
+    public Claims parseToken(String token) {
         return Jwts.parser()
                 .setSigningKey(secret)
                 .parseClaimsJws(token)
@@ -78,11 +75,9 @@ public class TokenUtils {
      * @param request
      * @return token
      */
-    public String getToken(HttpServletRequest request)
-    {
+    public String getToken(HttpServletRequest request) {
         String token = request.getHeader(header);
-        if (StringUtils.isNotEmpty(token) && token.startsWith(TokenUtils.TOKEN_PREFIX))
-        {
+        if (StringUtils.isNotEmpty(token) && token.startsWith(TokenUtils.TOKEN_PREFIX)) {
             token = token.replace(TokenUtils.TOKEN_PREFIX, "");
         }
         return token;
@@ -91,7 +86,7 @@ public class TokenUtils {
 
     public static void main(String[] args) {
         Map<String, Object> map = new HashMap<>();
-      map.put(LOGIN_USER_KEY, 678L);
+        map.put(LOGIN_USER_KEY, 678L);
         String token = createToken(map);
         System.out.println(token);
 

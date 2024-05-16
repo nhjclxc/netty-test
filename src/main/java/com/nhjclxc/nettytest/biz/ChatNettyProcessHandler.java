@@ -1,77 +1,89 @@
 package com.nhjclxc.nettytest.biz;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
+import com.nhjclxc.nettytest.config.ChatChannelHandlerPool;
 import com.nhjclxc.nettytest.config.NettyResult;
-import io.netty.channel.Channel;
+import com.nhjclxc.nettytest.utils.CustomThreadPoolExecutor;
+import com.nhjclxc.nettytest.utils.MessageType;
+import io.netty.channel.*;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * netty聊天融入业务
- *
  */
 @Slf4j
 @Component
 public class ChatNettyProcessHandler {
 
-//    @Autowired
-//    NettyRequestHandler handler;
-
     /**
-     * 发送聊天
+     * 向指定信道发送消息
      *
-     * @param myChannel 发送用户的信道
-     * @param msg 发送者发送的消息
+     * @param channel 目标用户的信道
+     * @param type    发送的类型 {@link com.nhjclxc.nettytest.utils.MessageType}
+     * @param data    发送的消息 , json格式
      * @author 罗贤超
      */
-    public void send(Channel myChannel, String msg){
+    public void send(Channel channel, MessageType type, Object data, Long userId, Long toUserId) {
+        if (channel == null)
+            throw new RuntimeException("目标信道不能为空！！！");
+
         try {
-//            System.out.println(handler);
-// {"userId": 1, "toUserId": 1, "type": 1, "isOneToOne": true, "msgType": 1,"content": "你好 222"}
-            chat(myChannel, JSON.parseObject(msg, MsgObject.class));
-        } catch (JSONException je){
-            log.error("netty聊天消息体格式错误，{}", je.getMessage());
+            NettyResult<Object> result = NettyResult.builder().type(type).data(data).userId(userId).toUserId(toUserId).build();
+            ChannelFuture channelFuture = channel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(result).toJSONString()));
+            channelFuture.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture channelFuture) throws Exception {
+                    boolean success = channelFuture.isSuccess();
+                }
+            });
+
         } catch (Exception e) {
             e.printStackTrace();
             log.error("netty聊天未知异常，{}", e.getMessage());
         }
     }
 
-    private void chat(Channel myChannel, MsgObject msgObject) {
+    /**
+     * 向指定用户发送消息
+     */
+    public void send(MessageType type, Object data, Long userId, Long toUserId) {
+        if (toUserId == null) throw new RuntimeException("目标用户不能为空");
 
-        Channel channel = ChatChannelHandlerPool.getChannel(msgObject.getToUserId());
-        if (channel == null) {
-            // 用户不在线，返回实时发送失败，转为立离线发送
-            myChannel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.error("用户不在线，消息已离线发送")).toJSONString()));
+        Channel channel = ChatChannelHandlerPool.getChannel(toUserId);
+        send(channel, type, data, userId, toUserId);
+    }
 
-            //todo 把这条消息存起来， 保存聊天记录当用户上线的时候发给他
-            return;
+    /**
+     * 指定群聊发送数据
+     */
+    public void send(Long groupId, Object data) {
+        CustomThreadPoolExecutor.execute(() -> {
+            List<Channel> groupAllChannel = ChatChannelHandlerPool.getGroupAllChannel(groupId);
+            for (Channel channel : groupAllChannel) {
+                send(channel, null, data, null, null);
+            }
+        });
+    }
+
+    /**
+     * 指定信道发送数据
+     */
+    public void send(Channel channel, Object data) {
+        send(channel, null, data, null, null);
+    }
+
+    /**
+     * 向所有在线用户发送消息
+     */
+    public void send(MessageType type, Object data) {
+        List<Channel> allChannel = ChatChannelHandlerPool.getAllChannel();
+        for (Channel channel : allChannel) {
+            send(channel, type, data, null, null);
         }
-        // 发送给目标用户
-        channel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.success(null, msgObject.getContent())).toJSONString()));
-
-        // 消息发送状态返回给发送者
-        myChannel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.success("实时消息发送成功")).toJSONString()));
     }
 
-
-    @Data
-    private static class MsgObject{
-        private Long userId;
-        private Long toUserId;
-        /**
-         * 是否单聊
-         */
-        private Boolean isOneToOne;
-        /**
-         * 消息类型（1=文字，2=图片，3=音频，4=视频，...）
-         */
-        private Integer msgType;
-        private String content;
-    }
 }

@@ -1,8 +1,8 @@
 package com.nhjclxc.nettytest.config;
 
 import com.alibaba.fastjson2.JSONObject;
-import com.nhjclxc.nettytest.biz.ChatChannelHandlerPool;
 import com.nhjclxc.nettytest.biz.ChatNettyProcessHandler;
+import com.nhjclxc.nettytest.utils.MessageType;
 import com.nhjclxc.nettytest.utils.TokenUtils;
 import io.jsonwebtoken.Claims;
 import io.netty.buffer.ByteBuf;
@@ -23,7 +23,7 @@ import javax.annotation.Resource;
 
 /**
  * netty消息处理句柄
- *
+ * <p>
  * NettyRequestHandler
  */
 @Slf4j
@@ -35,7 +35,8 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
     /**
      * 防止通过new的方式创建对象，new的方式无法交给spring管理
      */
-    private NettyRequestHandler() {  }
+    private NettyRequestHandler() {
+    }
 
     private WebSocketServerHandshaker handshaker;
 
@@ -121,23 +122,30 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
             try {
                 userId = checkToken(authorization);
             } catch (Exception e) {
-                log.error("获取用户tokrn失败");
+                log.error("获取用户token失败");
             }
             // 信道与userId关联
-            if (userId != null){
+            if (userId != null) {
                 ChatChannelHandlerPool.saveChannel(userId, ctx.channel());
-            }else {
+                // 每一次请求都会进入，获取请求包头
+                log.info("接收到客户端的握手包：{}", ctx.channel().id());
+                super.channelRead(ctx, msg);
+            } else {
+                // 鉴权失败，向客户端发送消息，然后关闭连接
                 Channel channel = ctx.channel();
-                channel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.error("获取用户tokrn失败 ")).toJSONString()));
-//                return;
-//                throw new RuntimeException("获取用户tokrn失败");
+                channel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.builder().type(MessageType.NOT_AUTHORIZATION).build()).toJSONString()));
+                ChannelPromise promise = ctx.newPromise();
+                promise.addListener((ChannelFutureListener) future -> {
+                    if (future.isSuccess()) {
+                        System.out.println("Channel closed successfully");
+                    } else {
+                        future.cause().printStackTrace();
+                    }
+                });
+                ctx.close(promise);
             }
         }
 
-
-        // 每一次请求都会进入，获取请求包头
-        log.info("接收到客户端的握手包：{}", ctx.channel().id());
-        super.channelRead(ctx, msg);
     }
 
 
@@ -203,7 +211,7 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
     private void handleHttpRequest(ChannelHandlerContext ctx, FullHttpRequest request) {
         if (!request.decoderResult().isSuccess()) {
             // 链接失败处理
-            DefaultFullHttpResponse response =  new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST);
+            DefaultFullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST);
             // 返回应答给客户端
             if (response.status().code() != 200) {
                 ByteBuf buf = Unpooled.copiedBuffer(response.status().toString(), CharsetUtil.UTF_8);
