@@ -1,6 +1,7 @@
 package com.nhjclxc.nettytest.config;
 
 import com.nhjclxc.nettytest.utils.CustomThreadPoolExecutor;
+import com.nhjclxc.nettytest.utils.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -8,9 +9,7 @@ import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * 服务预热
@@ -51,6 +50,11 @@ public class BootInitializer implements ApplicationRunner, EnvironmentAware {
         // 模拟退出群聊
         ChatChannelHandlerPool.removeGroupUser(1L, 4L);
         log.info("33 {}", ChatChannelHandlerPool.getGroupAllUserId(1L));
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("login_user_id", "111");
+        String token = TokenUtils.createToken(claims);
+        log.info("token = {}", token);
 
     }
 

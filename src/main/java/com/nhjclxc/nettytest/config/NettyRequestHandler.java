@@ -19,6 +19,9 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -89,13 +92,23 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     /**
-     * 接收请求
+     * 第一次连接才会调用
      */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+    }
+
+    /**
+     * 接收请求
+     */
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        log.info("channelRead");
         // 请求分发
         if (msg instanceof FullHttpRequest) {
             handleHttpRequest(ctx, (FullHttpRequest) msg);
+            // 校验权限
+            checkAuthorization(ctx, msg);
         } else if (msg instanceof PingWebSocketFrame) {
             pingWebSocketFrameHandler(ctx, (PingWebSocketFrame) msg);
         } else if (msg instanceof TextWebSocketFrame) {
@@ -103,25 +116,43 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
         } else if (msg instanceof CloseWebSocketFrame) {
             closeWebSocketFrameHandler(ctx, (CloseWebSocketFrame) msg);
         }
+        super.channelRead(ctx, msg);
     }
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    private void checkAuthorization(ChannelHandlerContext ctx, Object msg) {
         // 只有第一次请求才会进入，这时获取请求包头，里面的token
         // token鉴权用户与信道进行绑定
         if (msg instanceof FullHttpRequest) {
             log.info("webSocket鉴权");
             FullHttpRequest msg1 = (FullHttpRequest) msg;
 
-            // 获取请求携带的令牌
-            HttpHeaders headers = msg1.headers();
-            String authorization = headers.get(tokenHeader);
-            log.info("webSocket鉴权Authorization = " + authorization);
-
             Long userId = null;
             try {
+                // 获取请求携带的令牌
+                HttpHeaders headers = msg1.headers();
+                String authorization = headers.get(tokenHeader);
+                log.info("webSocket鉴权Authorization = " + authorization);
                 userId = checkToken(authorization);
+
+                // 从请求参数里面获取
+                if (userId == null){
+// ws://127.0.0.1:8085?Authorization=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJsb2dpbl91c2VyX2lkIjoiMTExIn0.ndtHCsJ8YJgI2z1tDrFN0VbFqkwiGUw9E5YaXPcAv_d4cAt0HNR7D3k4Aq7IODgatXl-CBJ3wGEm4br8ic2QqA
+                    String uri = msg1.uri();
+                    String query = uri.replace("/?", "");
+                    Map<String, String> queryParams = Stream.of(query.split("&"))
+                            .map(param -> param.split("="))
+                            .collect(Collectors.toMap(entry -> entry[0], entry -> entry[1]));
+
+                    String token = queryParams.get(tokenHeader);
+
+                    userId = checkToken(token);
+                }
+
+                if (userId == null){
+                    throw new RuntimeException("无效的token，获取用户数据失败！！！");
+                }
             } catch (Exception e) {
+                e.printStackTrace();
                 log.error("获取用户token失败");
             }
             // 信道与userId关联
@@ -129,7 +160,6 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
                 ChatChannelHandlerPool.saveChannel(userId, ctx.channel());
                 // 每一次请求都会进入，获取请求包头
                 log.info("接收到客户端的握手包：{}", ctx.channel().id());
-                super.channelRead(ctx, msg);
             } else {
                 // 鉴权失败，向客户端发送消息，然后关闭连接
                 Channel channel = ctx.channel();
@@ -145,15 +175,18 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
                 ctx.close(promise);
             }
         }
-
     }
 
 
     private Long checkToken(String token) {
-        if (StringUtils.isNotEmpty(token) && token.startsWith(TokenUtils.TOKEN_PREFIX)) {
+        if (token == null){
+            return null;
+        }
+        if (StringUtils.isNotEmpty(token) && TokenUtils.TOKEN_PREFIX.startsWith(token)) {
             token = token.replace(TokenUtils.TOKEN_PREFIX, "");
         }
-
+        // 密钥 12345678
+// eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJsb2dpbl91c2VyX2lkIjoiMTExIn0.ndtHCsJ8YJgI2z1tDrFN0VbFqkwiGUw9E5YaXPcAv_d4cAt0HNR7D3k4Aq7IODgatXl-CBJ3wGEm4br8ic2QqA
         Claims claims = tokenUtils.parseToken(token);
         // 解析对应的权限以及用户信息
         return Long.parseLong((String) claims.get(TokenUtils.LOGIN_USER_KEY));
