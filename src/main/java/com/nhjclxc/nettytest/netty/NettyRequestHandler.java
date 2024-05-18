@@ -1,8 +1,9 @@
-package com.nhjclxc.nettytest.config;
+package com.nhjclxc.nettytest.netty;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.nhjclxc.nettytest.biz.ChatNettyProcessHandler;
 import com.nhjclxc.nettytest.utils.MessageType;
+import com.nhjclxc.nettytest.utils.NettyResult;
 import com.nhjclxc.nettytest.utils.TokenUtils;
 import io.jsonwebtoken.Claims;
 import io.netty.buffer.ByteBuf;
@@ -103,7 +104,7 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        log.info("channelRead");
+//        log.info("channelRead");
         // 请求分发
         if (msg instanceof FullHttpRequest) {
             handleHttpRequest(ctx, (FullHttpRequest) msg);
@@ -163,7 +164,7 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
             } else {
                 // 鉴权失败，向客户端发送消息，然后关闭连接
                 Channel channel = ctx.channel();
-                channel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.builder().type(MessageType.NOT_AUTHORIZATION).build()).toJSONString()));
+                channel.writeAndFlush(new TextWebSocketFrame(JSONObject.from(NettyResult.builder().messageType(MessageType.NOT_AUTHORIZATION).build()).toJSONString()));
                 ChannelPromise promise = ctx.newPromise();
                 promise.addListener((ChannelFutureListener) future -> {
                     if (future.isSuccess()) {
@@ -230,12 +231,15 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
     private void textWebSocketFrameHandler(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
         String text = frame.text();
         log.info("接收到客户端的消息：{}", text);
-//        Channel channel = ctx.channel();
-//        channel.writeAndFlush(new TextWebSocketFrame("回复message = " + text));
-        // TODO 在这里融入你的业务 2，聊天
-        chatNettyProcessHandler.send(ctx.channel(), text);
-
-        ctx.fireChannelRead(text);
+        if (text != null && !"".equals(text) && text.toLowerCase().contains("ping")){
+            // 心跳篇消息
+            Channel channel = ctx.channel();
+            channel.writeAndFlush(new TextWebSocketFrame("Pong"));
+        }else {
+            // TODO 在这里融入你的业务 2，聊天
+            chatNettyProcessHandler.send(ctx.channel(), text);
+            ctx.fireChannelRead(text);
+        }
     }
 
     /**

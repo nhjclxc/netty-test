@@ -1,4 +1,4 @@
-package com.nhjclxc.nettytest.config;
+package com.nhjclxc.nettytest.netty;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;

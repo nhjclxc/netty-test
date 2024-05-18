@@ -1,4 +1,4 @@
-package com.nhjclxc.nettytest.config;
+package com.nhjclxc.nettytest.netty;
 
 import com.alibaba.fastjson.JSONObject;
 import io.netty.buffer.ByteBuf;

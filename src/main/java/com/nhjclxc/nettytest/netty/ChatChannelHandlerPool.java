@@ -1,4 +1,4 @@
-package com.nhjclxc.nettytest.config;
+package com.nhjclxc.nettytest.netty;
 
 
 import io.netty.channel.Channel;
@@ -48,6 +48,18 @@ public class ChatChannelHandlerPool {
         userChannelIdMap.put(userId, channel.id());
     }
 
+    public static Long getUserIdByChannelId(ChannelId destChannelId){
+        // 遍历Map，查找对应的userId
+        Long userId = null;
+        for (Map.Entry<Long, ChannelId> entry : userChannelIdMap.entrySet()) {
+            if (entry.getValue().equals(destChannelId)) {
+                userId = entry.getKey();
+                break;
+            }
+        }
+        return userId;
+    }
+
     /**
      * 项目启动的时候初始化群聊关系
      * 以下数据应当存在数据库里面进行持久化
@@ -89,7 +101,7 @@ public class ChatChannelHandlerPool {
     /**
      * 获取某个群聊的所有信道
      */
-    public static List<Channel> getGroupAllChannel(Long groupId) {
+    public static Map<Long, Channel> getGroupAllChannel(Long groupId) {
         List<Long> userIdList = getGroupAllUserId(groupId);
         return getChannelListByUserIdList(userIdList);
     }
@@ -108,15 +120,14 @@ public class ChatChannelHandlerPool {
     }
 
 
-    public static List<Channel> getChannelListByUserIdList(List<Long> userIdList) {
-//        Map<Long, ChannelId> userChannelIdMap
-        List<ChannelId> channelIdList = new ArrayList<>();
+    public static Map<Long, Channel> getChannelListByUserIdList(List<Long> userIdList) {
+        Map<Long, Channel> userChannelMap = new HashMap<>();
         userChannelIdMap.forEach((userId, channelId) -> {
             if (userIdList.contains(userId)){
-                channelIdList.add(channelId);
+                userChannelMap.put(userId, channelGroup.find(channelId));
             }
         });
-        return getChannelList(channelIdList);
+        return userChannelMap;
     }
 
 

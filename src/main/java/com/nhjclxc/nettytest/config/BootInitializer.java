@@ -1,6 +1,6 @@
 package com.nhjclxc.nettytest.config;
 
-import com.nhjclxc.nettytest.utils.CustomThreadPoolExecutor;
+import com.nhjclxc.nettytest.netty.ChatChannelHandlerPool;
 import com.nhjclxc.nettytest.utils.TokenUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;

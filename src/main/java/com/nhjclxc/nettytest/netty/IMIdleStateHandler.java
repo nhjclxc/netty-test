@@ -1,4 +1,4 @@
-package com.nhjclxc.nettytest.config;
+package com.nhjclxc.nettytest.netty;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleStateEvent;

@@ -86,11 +86,10 @@ public class TokenUtils {
 
     public static void main(String[] args) {
         Map<String, Object> map = new HashMap<>();
-        map.put(LOGIN_USER_KEY, 678L);
+//        map.put(LOGIN_USER_KEY, "123");
+        map.put(LOGIN_USER_KEY, "666"); // eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2lkIjoiNjY2In0.DnHhh1ChpVuHjX9oOLwQnJwUNo-Q18Nhs91TcJMVlguQXL8HIiLpgNG2FcOLv-IuHxRX8xH0NNeT5D_OTJRssA
         String token = createToken(map);
         System.out.println(token);
 
-        //123L eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2lkIjoxMjN9.UUiE5ViVNQaAk0jRGNxSlzJg5zuoqCO4q2sI9ZqewUZvjFjO3FkvGB7WaXTejib2nyDG7v2x8XFH-cAgybdi8A
-        //678L eyJhbGciOiJIUzUxMiJ9.eyJsb2dpbl91c2VyX2lkIjo2Nzh9.qYW1dHxbNsX_KNgSedRvUTAo_116V7KB5UyFZ5007oNWQsEbckW5fj2mRhS20IvQbTHD9SVATKUntuUy39jSjg
     }
 }
