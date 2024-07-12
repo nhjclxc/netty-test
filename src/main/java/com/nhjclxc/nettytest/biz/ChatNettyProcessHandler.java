@@ -38,6 +38,7 @@ public class ChatNettyProcessHandler {
         }
 
         try {
+            result.setTime(LocalDateTime.now());
             String finalMsg = JSONObject.from(result).toJSONString();
             ChannelFuture channelFuture = destChannel.writeAndFlush(new TextWebSocketFrame(finalMsg));
             channelFuture.addListener(new ChannelFutureListener() {

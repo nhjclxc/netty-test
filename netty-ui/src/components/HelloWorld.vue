@@ -214,9 +214,9 @@ export default {
             // 弹窗显示消息发送结果
             if (res.context) {
               // 使用map()方法创建新数组
-              this.dataList = this.dataList.map(function(item) {
+              this.dataList = this.dataList.map(function (item) {
                 // 如果uuid为"2"，则修改sendResult属性为true，否则保持不变
-                return item.uuid === res.uuid ? { ...item, sendResult: true } : item;
+                return item.uuid === res.uuid ? {...item, sendResult: true} : item;
               });
               ElMessage({
                 message: '消息发送成功',

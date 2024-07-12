@@ -53,8 +53,12 @@ public class BootInitializer implements ApplicationRunner, EnvironmentAware {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("login_user_id", "111");
-        String token = TokenUtils.createToken(claims);
-        log.info("token = {}", token);
+        String token111 = TokenUtils.createToken(claims);
+        log.info("userId = {}， token = {}", "111",  token111);
+
+        claims.put("login_user_id", "222");
+        String token222 = TokenUtils.createToken(claims);
+        log.info("userId = {}， token = {}", "222",  token222);
 
     }
 
