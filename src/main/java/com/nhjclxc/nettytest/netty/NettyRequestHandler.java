@@ -121,8 +121,8 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
 
         // netty使用中的LEAK: ByteBuf.release() was not called before it‘s garbage-collected
         // 读完就释放
-        assert msg instanceof ByteBuf;
-        ((ByteBuf) msg).release();
+//        assert msg instanceof ByteBuf;
+//        ((ByteBuf) msg).release();
     }
 
     private void checkAuthorization(ChannelHandlerContext ctx, Object msg) {
