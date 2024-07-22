@@ -11,6 +11,7 @@ import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import io.netty.util.ResourceLeakDetector;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +67,9 @@ public class NettyBootInitializer implements InitializingBean {
 //				ch.pipeline().addLast(ExceptionHandler.getInstance());
                     }
                 });
+
+        // 防止内存泄露
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
         bind(bootstrap, nettyPort);
     }
 
