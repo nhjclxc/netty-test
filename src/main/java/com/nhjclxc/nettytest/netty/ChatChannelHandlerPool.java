@@ -16,8 +16,7 @@ import java.util.stream.Collectors;
  */
 public class ChatChannelHandlerPool {
 
-    private ChatChannelHandlerPool() {
-    }
+    private ChatChannelHandlerPool() { }
 
     /**
      * 保存当前的所有信道
@@ -114,9 +113,14 @@ public class ChatChannelHandlerPool {
     }
 
 
-
-    public static List<Channel> getChannelList(List<ChannelId> channelIdList) {
-        return channelGroup.stream().filter(channel -> channelIdList.contains(channel.id())).collect(Collectors.toList());
+    /**
+     * 获取所有信道id指定的信道
+     */
+    public static List<Channel> getChannelList(List<ChannelId> ChannelIdList) {
+        if (ChannelIdList == null || ChannelIdList.size() == 0) {
+            return new ArrayList<>();
+        }
+        return ChannelIdList.stream().filter(Objects::nonNull).map(channelGroup::find).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
 
@@ -199,5 +203,173 @@ public class ChatChannelHandlerPool {
     public static List<Channel> getAllChannel() {
         return new ArrayList<>(channelGroup);
     }
+
+
+
+
+    /**
+     * 信道与用户关联
+     */
+    private static final Map<String, ChannelId> channelIdMapByToken = new ConcurrentHashMap<>(64); // 支持一个用户多端登录使用
+    private static final Map<Long, List<ChannelId>> channelIdListMapByUserId = new ConcurrentHashMap<>(32); // 支持一个用户多端登录使用
+    private static final Map<Long, List<ChannelId>> channelIdListMapByCompanyId = new ConcurrentHashMap<>(32);
+    private static final Map<Long, List<ChannelId>> channelIdListMapByProjectId = new ConcurrentHashMap<>(32);
+
+
+    /**
+     * 保存信道到信道池
+     */
+    private static void saveChannel(Channel channel) {
+        Channel channelTemp = channelGroup.find(channel.id());
+        if (null == channelTemp) {
+            channelGroup.add(channel);
+        }
+    }
+
+    /**
+     * 客户端链接到netty服务时，保存该用户的信道
+     *
+     * @param channel 信道
+     * @author 罗贤超
+     */
+    public static void saveChannelByToken(String token, Channel channel) {
+        saveChannel(channel);
+        channelIdMapByToken.put(token, channel.id());
+    }
+
+    public static Channel getChannelByToken(String token) {
+        if (channelIdMapByToken.containsKey(token)){
+            ChannelId channelId = channelIdMapByToken.get(token);
+            return channelGroup.find(channelId);
+        }
+        return null;
+    }
+
+    public static void saveChannelByUserId(Long userId, Channel channel) {
+        saveChannel(channel);
+        List<ChannelId> channelByUserId = getChannelByUserId(userId);
+        channelByUserId.add(channel.id());
+        channelIdListMapByUserId.put(userId, channelByUserId);
+    }
+
+    public static List<ChannelId> getChannelByUserId(Long userId) {
+        if (channelIdListMapByUserId.containsKey(userId)){
+            return channelIdListMapByUserId.get(userId);
+        }
+        return new ArrayList<>();
+    }
+
+    public static void saveChannelByProjectId(Long projectId, Channel channel) {
+        saveChannel(channel);
+        List<ChannelId> channelByProjectId = getChannelByProjectId(projectId);
+        channelByProjectId.add(channel.id());
+        channelIdListMapByProjectId.put(projectId, channelByProjectId);
+    }
+
+    public static List<ChannelId> getChannelByProjectId(Long projectId) {
+        if (channelIdListMapByProjectId.containsKey(projectId)){
+            return channelIdListMapByProjectId.get(projectId);
+        }
+        return new ArrayList<>();
+    }
+
+    public static void saveChannelByCompanyId(Long companyId, Channel channel) {
+        saveChannel(channel);
+        List<ChannelId> channelByCompanyId = getChannelByCompanyId(companyId);
+        channelByCompanyId.add(channel.id());
+        channelIdListMapByCompanyId.put(companyId, channelByCompanyId);
+    }
+
+    public static List<ChannelId> getChannelByCompanyId(Long companyId) {
+        if (channelIdListMapByCompanyId.containsKey(companyId)){
+            return channelIdListMapByCompanyId.get(companyId);
+        }
+        return new ArrayList<>();
+    }
+
+
+    /**
+     * 客户端关闭连接时，移除该用户的信道
+     *
+     * @param channel 信道
+     * @author 罗贤超
+     */
+    public static void removeChannel2(Channel channel) {
+        // 移除信道池里面的信道
+        boolean flag = channelGroup.remove(channel);
+
+        // 移除用户与信道对应关系
+        // 信道还存在才去移除
+        if (flag){
+            ChannelId removeChannelId = channel.id();
+
+            // 移除指定token里面的信道 userChannelIdMapByToken<String, ChannelId>
+            Iterator<Map.Entry<String, ChannelId>> iteratorByToken = channelIdMapByToken.entrySet().iterator();
+            while (iteratorByToken.hasNext()) {
+                Map.Entry<String, ChannelId> next = iteratorByToken.next();
+                if (next.getValue().equals(removeChannelId)) {
+                    iteratorByToken.remove();
+                    break;
+                }
+            }
+
+            // 移除指定userId里面的信道 userChannelIdListMap<Long, List<ChannelId>>
+            Iterator<Map.Entry<Long, List<ChannelId>>> iteratorByUserId = channelIdListMapByUserId.entrySet().iterator();
+            while (iteratorByUserId.hasNext()) {
+                Map.Entry<Long, List<ChannelId>> next = iteratorByUserId.next();
+                List<ChannelId> channelIdList = next.getValue();
+                for (ChannelId channelId : channelIdList) {
+                    if (channelId.equals(removeChannelId)) {
+                        iteratorByUserId.remove();
+                        break;
+                    }
+                }
+            }
+
+            // 移除指定projectId里面的信道 projectChannelIdListMap<Long, List<ChannelId>>
+            Iterator<Map.Entry<Long, List<ChannelId>>> iteratorByProjectId = channelIdListMapByProjectId.entrySet().iterator();
+            while (iteratorByProjectId.hasNext()) {
+                Map.Entry<Long, List<ChannelId>> next = iteratorByProjectId.next();
+                List<ChannelId> channelIdList = next.getValue();
+                for (ChannelId channelId : channelIdList) {
+                    if (channelId.equals(removeChannelId)) {
+                        iteratorByProjectId.remove();
+                        break;
+                    }
+                }
+            }
+
+            // 移除指定projectId里面的信道 companyChannelIdListMap<Long, List<ChannelId>>
+            Iterator<Map.Entry<Long, List<ChannelId>>> iteratorByCompanyId = channelIdListMapByCompanyId.entrySet().iterator();
+            while (iteratorByCompanyId.hasNext()) {
+                Map.Entry<Long, List<ChannelId>> next = iteratorByCompanyId.next();
+                List<ChannelId> channelIdList = next.getValue();
+                for (ChannelId channelId : channelIdList) {
+                    if (channelId.equals(removeChannelId)) {
+                        iteratorByCompanyId.remove();
+                        break;
+                    }
+                }
+            }
+
+        }
+    }
+
+
+//    /**
+//     * 获取某个用户的信道
+//     *
+//     * @param userId userId
+//     * @return 信道
+//     * @author 罗贤超
+//     */
+//    public static Channel getChannelByUserId(Long userId) {
+//        if (userChannelIdMap.containsKey(userId)){
+//            ChannelId channelId = userChannelIdMap.get(userId);
+//            return channelGroup.find(channelId);
+//        }
+//        //todo 保存聊天记录当用户上线的时候发给他
+//        return null;
+//    }
 
 }

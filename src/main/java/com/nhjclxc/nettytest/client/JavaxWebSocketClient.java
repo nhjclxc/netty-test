@@ -93,7 +93,7 @@ public class JavaxWebSocketClient {
         JavaxWebSocketClient webSocketClient = JavaxWebSocketClient.connectToServer(url);
         webSocketClient.sendMessage("{\"destUserId\": 111, \"context\": \"contex11111tcontextcontext\"}");
 
-        Thread.sleep(5000); // 或根据需要调整时间
+        Thread.sleep(50000); // 或根据需要调整时间
     }
 
     public static void main2(String[] args) {

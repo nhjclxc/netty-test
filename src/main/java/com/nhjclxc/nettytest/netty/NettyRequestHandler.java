@@ -164,6 +164,11 @@ public class NettyRequestHandler extends SimpleChannelInboundHandler<Object> {
             // 信道与userId关联
             if (userId != null) {
                 ChatChannelHandlerPool.saveChannel(userId, ctx.channel());
+//                ChatChannelHandlerPool.saveChannelByToken(userToken, ctx.channel());
+//                ChatChannelHandlerPool.saveChannelByUserId(userId, ctx.channel());
+//                ChatChannelHandlerPool.saveChannelByProjectId(projectId, ctx.channel());
+//                ChatChannelHandlerPool.saveChannelByCompanyId(companyId, ctx.channel());
+
                 // 每一次请求都会进入，获取请求包头
                 log.info("接收到客户端的握手包：{}", ctx.channel().id());
             } else {
